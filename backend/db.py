@@ -17,6 +17,7 @@ class User(db.Model):
     __table_args__ = (
         db.UniqueConstraint('username'),
     )
+
     
 
 class Spots(db.Model):
@@ -35,6 +36,20 @@ class Spots(db.Model):
     # Relationships
     reviews = db.relationship('Reviews', backref='spot', lazy=True)
     saves = db.relationship('Saves', backref='spot', lazy=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "building_name": self.building_name,
+            "description": self.description,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "creation_time": self.creation_time,
+            "floor": self.floor,
+            "tags": self.tags,
+            "duration": self.duration
+        }
 
 
 class Reviews(db.Model):
