@@ -1,6 +1,8 @@
 import json
 from flask import Flask, request
 from db import db, User, Spots, Reviews, Saves
+from sqlalchemy.exc import IntegrityError
+import bcrypt
 
 # define db filename
 db_filename = "napify.db"
@@ -36,11 +38,45 @@ def get_user_saved_spots(user_id):
 
 @app.route("/auth/register/", methods=["POST"])
 def register_user():
-    pass
+    body = json.loads(request.data)
+    name = body.get("name")
+    username = body.get("username")
+    pw = body.get("password")
+    if name is None or username is None or pw is None:
+        return failure_response("name, username, or password is not found")
+
+    hashed_pw = bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    new_user = User(name=name, username=username, password=hashed_pw)
+
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return failure_response("Username already exists", 400)
+    
+    db.session.commit()
+    return success_response(new_user.serialize(), 201)
 
 @app.route("/auth/login/", methods=["POST"])
 def sign_in():
-    pass
+    body = json.loads(request.data)
+    username = body.get("username")
+    pw = body.get("password")
+    
+    if username is None or pw is None:
+        return failure_response("Username or password is missing", 400)
+    
+    user = User.query.filter_by(username=username).first()
+
+    if user is None:
+        return failure_response("Invalid credentials", 401)
+    
+    if not bcrypt.checkpw(pw.encode("utf-8"), user.password.encode("utf-8")):
+        return failure_response("Invalid credentials", 401)
+    
+    return success_response(user.serialize())
 
 # posts (create/get)
 
