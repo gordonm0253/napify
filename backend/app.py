@@ -95,17 +95,25 @@ def sign_in():
         return failure_response("Invalid credentials", 401)
     return success_response(user.serialize())
 
-# posts (create/get)-----------
+@app.route("/spots/")
+def get_all_spots():
+    pass
 
-# get all posts
-@app.route("/posts/")
-def get_all_posts():
+@app.route("/spots/<int:spot_id>/")
+def get_spot(spot_id):
+    pass
+
+# reviews (create/get)-----------
+
+# get all reviews
+@app.route("/review/")
+def get_all_reviews():
     posts = Spots.query.all()
     return success_response({"posts": [p.to_dict() for p in posts]})
 
-# create a post
-@app.route("/posts/", methods=["POST"])
-def create_post():
+# create a review
+@app.route("/review/", methods=["POST"])
+def create_review():
     body = json.loads(request.data)
     user_id = body.get("user_id")
     building_name = body.get("building_name")
@@ -125,9 +133,9 @@ def create_post():
     return success_response(new_post.to_dict(), 201)
 
 # get a specific post
-@app.route("/posts/<int:post_id>/", methods=["GET"])
-def get_post(post_id):
-    post = Spots.query.filter_by(id=post_id).first()
+@app.route("/review/<int:review_id>/", methods=["GET"])
+def get_review(review_id):
+    post = Spots.query.filter_by(id=review_id).first()
     if post is None:
         return failure_response("Post not found!")
     return success_response(post.to_dict())
@@ -135,16 +143,16 @@ def get_post(post_id):
 # save/unsave posts--------------------
 
 # save a post
-@app.route("/posts/<int:post_id>/save/", methods=["POST"])
-def save_post(post_id):
+@app.route("/posts/<int:spot_id>/save/", methods=["POST"])
+def save_spot(spot_id):
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
     user_id = user.id
     
-    existing = Saves.query.filter_by(user_id=user_id, spot_id=post_id).first()
+    existing = Saves.query.filter_by(user_id=user_id, spot_id=spot_id).first()
     if not existing: #prevent duplicates of save
-        new_save = Saves(user_id=user_id, spot_id=post_id)
+        new_save = Saves(user_id=user_id, spot_id=spot_id)
         db.session.add(new_save)
         db.session.commit()    
         return success_response(new_save, 201)
@@ -152,14 +160,14 @@ def save_post(post_id):
         return failure_response("Already saved")
 
 #unsave a post
-@app.route("/posts/<int:post_id>/save/", methods=["DELETE"])
-def unsave_post(post_id):
+@app.route("/posts/<int:spot_id>/save/", methods=["DELETE"])
+def unsave_spot(spot_id):
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
     user_id = user.id
 
-    save = Saves.query.filter_by(user_id = user_id, spot_id = post_id).first()
+    save = Saves.query.filter_by(user_id = user_id, spot_id = spot_id).first()
     if save is None:
         return failure_response("Save not found!")
     db.session.delete(save)
