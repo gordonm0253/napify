@@ -1,8 +1,7 @@
 import json
 from flask import Flask, request
 from db import db, User, Spots, Reviews, Saves
-from sqlalchemy.exc import IntegrityError
-import bcrypt
+import base64
 from datetime import datetime
 
 # define db filename
@@ -22,67 +21,78 @@ with app.app_context():
 def success_response(data, code=200):
     return json.dumps(data), code
 
-def success_response201(data, code=201):
-    return json.dumps(data), code
-
 def failure_response(message, code=404):
-    return json.dumps({"error": message}), code
-
-def failure_response400(message, code=400):
     return json.dumps({"error": message}), code
 
 # users
 
-@app.route("/users/<int:user_id>/")
-def get_user_by_id(user_id):
-    pass
+@app.route("/user/")
+def get_user_info():
+    user = require_basic_auth()
+    if user is None:
+        return failure_response("Invalid credentials", 401)
 
-@app.route("/users/<int:user_id>/")
-def get_user_saved_spots(user_id):
-    pass
+@app.route("/user/spots/")
+def get_user_saved_spots():
+    user = require_basic_auth()
+    if user is None:
+        return failure_response("Invalid credentials", 401)
 
 # login/register
 
-@app.route("/auth/register/", methods=["POST"])
+@app.route("/register/", methods=["POST"])
 def register_user():
-    body = json.loads(request.data)
-    name = body.get("name")
-    username = body.get("username")
-    pw = body.get("password")
-    if name is None or username is None or pw is None:
-        return failure_response("name, username, or password is not found")
+    auth_header = request.headers.get("Authorization")
 
-    hashed_pw = bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-    new_user = User(name=name, username=username, password=hashed_pw)
-
-    try:
-        db.session.add(new_user)
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return failure_response("Username already exists", 400)
+    if not auth_header or not auth_header.startswith("Basic "):
+        return failure_response("Auth header is missing or invalid", 401)
     
+    encoded = auth_header.removeprefix("Basic ")
+    decoded = base64.b64decode(encoded).decode("utf-8")
+
+    username, password = decoded.split(":")
+
+    user = User.query.filter_by(username=username).first()
+
+    if user is not None:
+        return failure_response("User already exists", 400)
+    
+    new_user = User(username=username, password=password)
+
+    db.session.add(new_user)
     db.session.commit()
     return success_response(new_user.serialize(), 201)
 
-@app.route("/auth/login/", methods=["POST"])
-def sign_in():
-    body = json.loads(request.data)
-    username = body.get("username")
-    pw = body.get("password")
+def require_basic_auth():
+    """
+    Helper function for requiing basic authentication
+    """
+
+    auth_header = request.headers.get("Authorization")
+
+    if not auth_header or not auth_header.startswith("Basic "):
+        return failure_response("Auth header is missing or invalid", 401)
     
-    if username is None or pw is None:
-        return failure_response("Username or password is missing", 400)
-    
+    encoded = auth_header.removeprefix("Basic ")
+    decoded = base64.b64decode(encoded).decode("utf-8")
+
+    username, password = decoded.split(":")
+
     user = User.query.filter_by(username=username).first()
 
     if user is None:
+        return None
+
+    if user.password != password:
+        return None
+
+    return user    
+
+@app.route("/auth/login/")
+def sign_in():
+    user = require_basic_auth()
+    if user is None:
         return failure_response("Invalid credentials", 401)
-    
-    if not bcrypt.checkpw(pw.encode("utf-8"), user.password.encode("utf-8")):
-        return failure_response("Invalid credentials", 401)
-    
     return success_response(user.serialize())
 
 # posts (create/get)-----------
@@ -108,11 +118,11 @@ def create_post():
     tags = body.get("tags")
     duration = body.get("duration")
     if user_id is None or building_name is None or description is None or latitude is None or longitude is None or creation_time is None:
-        return failure_response400("Information not provided for creating post.")
+        return failure_response("Information not provided for creating post.", 400)
     new_post = Spots(user_id = user_id, building_name = building_name, description = description, latitude = latitude, longitude = longitude, creation_time = creation_time, floor = floor, tags = tags, duration = duration)
     db.session.add(new_post)
     db.session.commit()
-    return success_response201(new_post.to_dict())
+    return success_response(new_post.to_dict(), 201)
 
 # get a specific post
 @app.route("/posts/<int:post_id>/", methods=["GET"])
@@ -127,28 +137,28 @@ def get_post(post_id):
 # save a post
 @app.route("/posts/<int:post_id>/save/", methods=["POST"])
 def save_post(post_id):
-    body = json.loads(request.data)
-    user_id = body.get("user_id")
-    if user_id is None:
-        return failure_response400("user_id not provided for saving post.")
+    user = require_basic_auth()
+    if user is None:
+        return failure_response("Invalid credentials", 401)
+    user_id = user.id
     
     existing = Saves.query.filter_by(user_id=user_id, spot_id=post_id).first()
     if not existing: #prevent duplicates of save
         new_save = Saves(user_id=user_id, spot_id=post_id)
         db.session.add(new_save)
         db.session.commit()    
-        return success_response201(new_save)
+        return success_response(new_save, 201)
     else:
-        return success_response("Already saved")
+        return failure_response("Already saved")
 
 #unsave a post
 @app.route("/posts/<int:post_id>/save/", methods=["DELETE"])
 def unsave_post(post_id):
-    body = json.loads(request.data)
-    user_id = body.get("user_id")
-    if user_id is None:
-        return failure_response400("user_id not provided for unsaving post.")
-    
+    user = require_basic_auth()
+    if user is None:
+        return failure_response("Invalid credentials", 401)
+    user_id = user.id
+
     save = Saves.query.filter_by(user_id = user_id, spot_id = post_id).first()
     if save is None:
         return failure_response("Save not found!")
