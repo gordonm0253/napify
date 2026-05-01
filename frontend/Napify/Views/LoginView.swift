@@ -87,15 +87,6 @@ struct LoginView: View {
             }
             .padding(.horizontal, 24)
 
-            // skip for demo
-            Button(action: {
-                authVM.skipLogin()
-            }){
-                Text("Skip Login (Demo)")
-                    .font(.caption)
-                    .foregroundStyle(Color(UIColor.napify.silver))
-            }
-
             Spacer()
         }
         .background(Color(UIColor.napify.offWhite))

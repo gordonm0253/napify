@@ -24,6 +24,7 @@ class AuthViewModel {
             isLoggedIn = true
             errorMessage = ""
         } catch {
+            print("Register error: \(error)")
             errorMessage = "Registration failed."
         }
     }
@@ -36,6 +37,7 @@ class AuthViewModel {
             isLoggedIn = true
             errorMessage = ""
         } catch {
+            print("Login error: \(error)")
             errorMessage = "Invalid username or password."
         }
     }

@@ -21,6 +21,7 @@ struct CreatePostView: View {
     @State private var napDuration: String = ""
     @State private var postError: String = ""
     @State private var postSuccess: Bool = false
+    @State private var isPosting: Bool = false
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var selectedImage: UIImage? = nil
 
@@ -219,7 +220,7 @@ struct CreatePostView: View {
                 Button {
                     Task { await submitPost() }
                 } label: {
-                    Text("Post")
+                    Text(isPosting ? "Posting..." : "Post")
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Color(UIColor.napify.white))
@@ -228,7 +229,7 @@ struct CreatePostView: View {
                         .background(Color(UIColor.napify.amber))
                         .cornerRadius(12)
                 }
-                .disabled(selectedBuilding.isEmpty || rating == 0 || napDuration.isEmpty || selectedImage == nil)
+                .disabled(isPosting || selectedBuilding.isEmpty || rating == 0 || napDuration.isEmpty || selectedImage == nil)
                 .padding(.horizontal, 24)
             }
         }
@@ -239,9 +240,11 @@ struct CreatePostView: View {
     }
 
     func submitPost() async {
+        isPosting = true
         guard let image = selectedImage,
               let jpegData = image.jpegData(compressionQuality: 0.7) else {
             postError = "Please add a photo."
+            isPosting = false
             return
         }
         let base64String = jpegData.base64EncodedString()
@@ -269,9 +272,11 @@ struct CreatePostView: View {
             napDuration = ""
             selectedPhoto = nil
             selectedImage = nil
+            isPosting = false
         } catch {
             postError = "Failed to post review."
             postSuccess = false
+            isPosting = false
         }
     }
 }

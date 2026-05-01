@@ -10,7 +10,7 @@ import Foundation
 class NetworkManager {
 
     static let shared = NetworkManager()
-    private let baseURL = "http://127.0.0.1:8000"
+    private let baseURL = Secrets.baseURL
 
     private let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
