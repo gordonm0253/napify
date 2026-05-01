@@ -49,7 +49,7 @@ class User(db.Model):
             "major": self.major,
             "hometown": self.hometown,
             "profile_picture": self.profile_picture,
-            "reviews": [r.serialize() for r in self.reviews],
+            "reviews": [r.serialize_without_image() for r in self.reviews],
             "saves": [s.serialize() for s in self.saves]
         }
 
@@ -72,7 +72,7 @@ class Spot(db.Model):
             "name": self.name,
             "latitude": self.latitude,
             "longitude": self.longitude,
-            "reviews": [r.serialize() for r in self.reviews]
+            "reviews": [r.serialize_without_image() for r in self.reviews]
         }
 
 
@@ -104,6 +104,21 @@ class Review(db.Model):
             "location_hint": self.location_hint,
             "creation_time": str(self.creation_time),
             "image_data": self.image_data,
+            "rating": self.rating,
+            "nap_duration": self.nap_duration,
+            "notes": self.notes,
+            "tags": [t.name for t in self.tags]
+        }
+    
+
+    def serialize_without_image(self):
+        """Serialize without image_data for list endpoints."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "spot_id": self.spot_id,
+            "location_hint": self.location_hint,
+            "creation_time": str(self.creation_time),
             "rating": self.rating,
             "nap_duration": self.nap_duration,
             "notes": self.notes,

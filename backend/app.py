@@ -55,8 +55,11 @@ def update_user_info():
     Update user information based on optional parameters for the currently authenticated user
     '''
     user = require_basic_auth()
+    if user is None:
+        return failure_response("Invalid credentials", 401)
+    
     body = json.loads(request.data)
-
+    
     # update only fields that were provided
     if "name" in body:
         user.name = body["name"]
@@ -155,7 +158,6 @@ def get_spot(spot_id):
     spot_data = add_spot_data(spot.serialize())
     return success_response(spot_data)
     
-
 # reviews (create/get)-----------
 
 # get all reviews
@@ -165,7 +167,7 @@ def get_all_reviews():
     Return all reviews across every nap spot.
     '''
     reviews = Review.query.all()
-    return success_response({"reviews": [r.serialize() for r in reviews]})
+    return success_response({"reviews": [r.serialize_without_image() for r in reviews]})
 
 # create a review
 @app.route("/reviews/", methods=["POST"])
