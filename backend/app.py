@@ -84,7 +84,7 @@ def register_user():
     if not auth_header or not auth_header.startswith("Basic "):
         return failure_response("Auth header is missing or invalid", 401)
     
-    encoded = auth_header.removeprefix("Basic ")
+    encoded = auth_header[len("Basic "):]
     decoded = base64.b64decode(encoded).decode("utf-8")
 
     username, password = decoded.split(":")
@@ -109,7 +109,7 @@ def require_basic_auth():
     if not auth_header or not auth_header.startswith("Basic "):
         return failure_response("Auth header is missing or invalid", 401)
     
-    encoded = auth_header.removeprefix("Basic ")
+    encoded = auth_header[len("Basic "):]
     decoded = base64.b64decode(encoded).decode("utf-8")
 
     username, password = decoded.split(":")
