@@ -33,6 +33,10 @@ def failure_response(message, code=404):
     '''
     return json.dumps({"error": message}), code
 
+@app.route("/")
+def hello():
+    return "Hello world!"
+
 # users
 @app.route("/user/")
 def get_user_info():
