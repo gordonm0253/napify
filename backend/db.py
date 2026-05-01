@@ -34,7 +34,6 @@ class Spot(db.Model):
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
 
-
     # Relationships
     reviews = db.relationship('Review', backref='spot', lazy=True)
     saves = db.relationship('Save', backref='spot', lazy=True)
@@ -65,12 +64,8 @@ class Review(db.Model):
     rating = db.Column(db.Float, nullable=False)
     nap_duration = db.Column(db.Integer, nullable=False)  # nap duration in minutes
     notes = db.Column(db.String, nullable=True) # any review notes on the spot!
-
+    
     tags = db.relationship("Tag", secondary=review_tags)
-
-    __table_args__ = ( # combination of user_id + spot_id must be unique
-        db.UniqueConstraint('user_id', 'spot_id'),
-    )
 
     def serialize(self):
         return {

@@ -108,73 +108,103 @@ def get_spot(spot_id):
 # reviews (create/get)-----------
 
 # get all reviews
-@app.route("/review/")
+@app.route("/reviews/")
 def get_all_reviews():
     posts = Spot.query.all()
     return success_response({"posts": [p.to_dict() for p in posts]})
 
 # create a review
-@app.route("/review/", methods=["POST"])
+@app.route("/reviews/", methods=["POST"])
 def create_review():
+    user = require_basic_auth()
+    if user is None:
+        return failure_response("Invalid credentials", 401)
+
     body = json.loads(request.data)
-    user_id = body.get("user_id")
-    building_name = body.get("building_name")
-    description = body.get("description")
+    spot_name = body.get("spot_name")
     latitude = body.get("latitude")
     longitude = body.get("longitude")
-    creation_time = dt.today()
+    rating = body.get("rating")
+    nap_duration = body.get("nap_duration")
+    location_hint = body.get("location_hint")
+    notes = body.get("notes")
+    tag_names = body.get("tags", [])
 
-    floor = body.get("floor")
-    tags = body.get("tags")
-    duration = body.get("duration")
-    if user_id is None or building_name is None or description is None or latitude is None or longitude is None or creation_time is None:
-        return failure_response("Information not provided for creating post.", 400)
-    new_post = Spot(user_id = user_id, building_name = building_name, description = description, latitude = latitude, longitude = longitude, creation_time = creation_time, floor = floor, tags = tags, duration = duration)
-    db.session.add(new_post)
+    if any(v is None for v in [spot_name, latitude, longitude, rating, nap_duration]):
+        return failure_response("Missing required fields.", 400)
+    
+    spot = Spot.query.filter_by(name=spot_name).first()
+    if spot is None:
+        spot = Spot(name=spot_name, latitude=latitude, longitude=longitude)
+        db.session.add(spot)
+        db.session.flush()
+
+    tags = []
+    for name in tag_names:
+        tag = Tag.query.filter_by(name=name).first()
+        if tag is None:
+            tag = Tag(name=name)
+            db.session.add(tag)
+        tags.append(tag)
+
+    new_review = Review(
+        user_id=user.id,
+        spot_id=spot.id,
+        rating=rating,
+        nap_duration=nap_duration,
+        location_hint=location_hint,
+        notes=notes,
+        creation_time=dt.today(),
+        tags=tags
+    )
+    db.session.add(new_review)
     db.session.commit()
-    return success_response(new_post.to_dict(), 201)
+    return success_response(new_review.serialize(), 201)
 
 # get a specific post
-@app.route("/review/<int:review_id>/", methods=["GET"])
+@app.route("/reviews/<int:review_id>/")
 def get_review(review_id):
-    post = Spot.query.filter_by(id=review_id).first()
-    if post is None:
+    review = Review.query.filter_by(id=review_id).first()
+    if review is None:
         return failure_response("Post not found!")
-    return success_response(post.to_dict())
+    return success_response(review.serialize())
 
 # save/unsave posts--------------------
 
 # save a post
-@app.route("/posts/<int:spot_id>/save/", methods=["POST"])
+@app.route("/spots/<int:spot_id>/save/", methods=["POST"])
 def save_spot(spot_id):
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
-    user_id = user.id
     
-    existing = Save.query.filter_by(user_id=user_id, spot_id=spot_id).first()
-    if not existing: #prevent duplicates of save
-        new_save = Save(user_id=user_id, spot_id=spot_id)
-        db.session.add(new_save)
-        db.session.commit()    
-        return success_response(new_save, 201)
-    else:
-        return failure_response("Already saved")
+    spot = Spot.query.filter_by(id=spot_id).first()
+    if spot is None:
+        return failure_response("Spot not found!")
+    
+    existing = Save.query.filter_by(user_id=user.id, spot_id=spot_id).first()
+    if existing is not None:
+        return failure_response("Already saved.", 409)
+    
+    new_save = Save(user_id=user.id, spot_id=spot_id)
+    db.session.add(new_save)
+    db.session.commit()
+    return success_response(new_save.serialize(), 201)
 
 #unsave a post
-@app.route("/posts/<int:spot_id>/save/", methods=["DELETE"])
+@app.route("/spots/<int:spot_id>/save/", methods=["DELETE"])
 def unsave_spot(spot_id):
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
-    user_id = user.id
 
-    save = Save.query.filter_by(user_id = user_id, spot_id = spot_id).first()
+    save = Save.query.filter_by(user_id=user.id, spot_id=spot_id).first()
     if save is None:
         return failure_response("Save not found!")
+
     db.session.delete(save)
     db.session.commit()
-    return success_response(save)
+    return success_response(save.serialize())
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
