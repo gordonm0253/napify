@@ -24,8 +24,17 @@ review_tags = db.Table("review_tags",
 class User(db.Model):
     __tablename__ = "user"
     id = db.Column(db.Integer, primary_key = True)
+
+    # login info
     username = db.Column(db.String, nullable=False, unique=True)
     password = db.Column(db.String, nullable=False)
+    
+    # user info
+    name = db.Column(db.String, nullable=True)
+    bio = db.Column(db.String, nullable=True)
+    major = db.Column(db.String, nullable=True)
+    hometown = db.Column(db.String, nullable=True)
+    profile_picture = db.Column(db.Text, nullable=True)
     
     # Relationships
     reviews = db.relationship('Review', backref='user', lazy=True)
@@ -35,6 +44,11 @@ class User(db.Model):
         return {
             "id": self.id,
             "username": self.username,
+            "name": self.name,
+            "bio": self.bio,
+            "major": self.major,
+            "hometown": self.hometown,
+            "profile_picture": self.profile_picture,
             "reviews": [r.serialize() for r in self.reviews],
             "saves": [s.serialize() for s in self.saves]
         }

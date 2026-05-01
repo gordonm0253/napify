@@ -37,14 +37,36 @@ def failure_response(message, code=404):
 @app.route("/user/")
 def get_user_info():
     '''
-    Return profile information for the currently authenticated user,
-    including aggregated stats (total nap time, spots visited, review count).
+    Return profile information for the currently authenticated user, including aggregated stats (total nap time, spots visited, review count).
     '''
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
     user_data = add_user_data(user.serialize())
     return success_response(user_data)
+
+@app.route("/user/", methods=["POST"])
+def update_user_info():
+    '''
+    Update user information based on optional parameters for the currently authenticated user
+    '''
+    user = require_basic_auth()
+    body = json.loads(request.data)
+
+    # update only fields that were provided
+    if "name" in body:
+        user.name = body["name"]
+    if "bio" in body:
+        user.bio = body["bio"]
+    if "major" in body:
+        user.major = body["major"]
+    if "hometown" in body:
+        user.hometown = body["hometown"]
+    if "profile_picture" in body:
+        user.profile_picture = body["profile_picture"]
+
+    db.session.commit()
+    return success_response(user.serialize())
 
 # login/register
 @app.route("/register/", methods=["POST"])

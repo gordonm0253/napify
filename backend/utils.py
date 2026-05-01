@@ -1,5 +1,3 @@
-from db import Spot, Review
-
 def add_spot_data(spot_data):
     '''
     Compute and append aggregate statistics to a serialized spot dict.
