@@ -216,7 +216,7 @@ def create_review():
         nap_duration=nap_duration,
         location_hint=location_hint,
         notes=notes,
-        creation_time=dt.today(),
+        creation_time=dt.now(),
         tags=tags,
         image_data=image_data
     )

@@ -3,7 +3,7 @@ def add_spot_data(spot_data):
     Compute and append aggregate statistics to a serialized spot dict.
     '''
     ratings = [r["rating"] for r in spot_data["reviews"]]
-    average_rating = sum(ratings) / len(ratings)
+    average_rating = sum(ratings) / len(ratings) if ratings else 0
     spot_data["avg_rating"] = average_rating
     return spot_data
 
