@@ -5,16 +5,17 @@
 //  Created by Mikiyas Asmamaw on 4/26/26.
 //
 
-import SwiftUI
+import Foundation
 
-struct User: Identifiable {
-    let id = UUID()
-
-    let name: String
+struct User: Codable, Identifiable {
+    let id: Int
     let username: String
-    let school: String
-    let avgRating: Double
-    let spotsVisited: Int
-    let totalNapMinutes: Int
-    let reviewCount: Int
+    let name: String?
+    let bio: String?
+    let major: String?
+    let hometown: String?
+    let profilePicture: String?
+    let totalNaptime: Int?
+    let totalSpots: Int?
+    let totalReviews: Int?
 }
