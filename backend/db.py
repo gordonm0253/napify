@@ -45,6 +45,7 @@ class Spot(db.Model):
             "name": self.name,
             "latitude": self.latitude,
             "longitude": self.longitude,
+            "reviews": [r.serialize() for r in self.reviews]
         }
 
 

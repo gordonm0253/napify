@@ -1,8 +1,9 @@
 import json
 from flask import Flask, request
-from db import db, User, Spots, Reviews, Saves
+from db import db, User, Spot, Review, Save, Tag
 import base64
-from datetime import datetime
+from datetime import datetime as dt
+from utils import add_spot_data, add_user_data
 
 # define db filename
 db_filename = "napify.db"
@@ -25,21 +26,15 @@ def failure_response(message, code=404):
     return json.dumps({"error": message}), code
 
 # users
-
 @app.route("/user/")
 def get_user_info():
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
-
-@app.route("/user/spots/")
-def get_user_saved_spots():
-    user = require_basic_auth()
-    if user is None:
-        return failure_response("Invalid credentials", 401)
+    user_data = add_user_data(user.serialize())
+    return success_response(user_data)
 
 # login/register
-
 @app.route("/register/", methods=["POST"])
 def register_user():
     auth_header = request.headers.get("Authorization")
@@ -95,20 +90,27 @@ def sign_in():
         return failure_response("Invalid credentials", 401)
     return success_response(user.serialize())
 
+# Routes for spots
 @app.route("/spots/")
 def get_all_spots():
-    pass
+    spots = [add_spot_data(s.serialize()) for s in Spot.query.all()]
+    return success_response({"spots": spots})
 
 @app.route("/spots/<int:spot_id>/")
 def get_spot(spot_id):
-    pass
+    spot = Spot.query.filter_by(id=spot_id).first()
+    if spot is None:
+        return failure_response("Spot not found!")
+    spot_data = add_spot_data(spot.serialize())
+    return success_response(spot_data)
+    
 
 # reviews (create/get)-----------
 
 # get all reviews
 @app.route("/review/")
 def get_all_reviews():
-    posts = Spots.query.all()
+    posts = Spot.query.all()
     return success_response({"posts": [p.to_dict() for p in posts]})
 
 # create a review
@@ -120,14 +122,14 @@ def create_review():
     description = body.get("description")
     latitude = body.get("latitude")
     longitude = body.get("longitude")
-    creation_time = datetime.utcnow()
+    creation_time = dt.today()
 
     floor = body.get("floor")
     tags = body.get("tags")
     duration = body.get("duration")
     if user_id is None or building_name is None or description is None or latitude is None or longitude is None or creation_time is None:
         return failure_response("Information not provided for creating post.", 400)
-    new_post = Spots(user_id = user_id, building_name = building_name, description = description, latitude = latitude, longitude = longitude, creation_time = creation_time, floor = floor, tags = tags, duration = duration)
+    new_post = Spot(user_id = user_id, building_name = building_name, description = description, latitude = latitude, longitude = longitude, creation_time = creation_time, floor = floor, tags = tags, duration = duration)
     db.session.add(new_post)
     db.session.commit()
     return success_response(new_post.to_dict(), 201)
@@ -135,7 +137,7 @@ def create_review():
 # get a specific post
 @app.route("/review/<int:review_id>/", methods=["GET"])
 def get_review(review_id):
-    post = Spots.query.filter_by(id=review_id).first()
+    post = Spot.query.filter_by(id=review_id).first()
     if post is None:
         return failure_response("Post not found!")
     return success_response(post.to_dict())
@@ -150,9 +152,9 @@ def save_spot(spot_id):
         return failure_response("Invalid credentials", 401)
     user_id = user.id
     
-    existing = Saves.query.filter_by(user_id=user_id, spot_id=spot_id).first()
+    existing = Save.query.filter_by(user_id=user_id, spot_id=spot_id).first()
     if not existing: #prevent duplicates of save
-        new_save = Saves(user_id=user_id, spot_id=spot_id)
+        new_save = Save(user_id=user_id, spot_id=spot_id)
         db.session.add(new_save)
         db.session.commit()    
         return success_response(new_save, 201)
@@ -167,7 +169,7 @@ def unsave_spot(spot_id):
         return failure_response("Invalid credentials", 401)
     user_id = user.id
 
-    save = Saves.query.filter_by(user_id = user_id, spot_id = spot_id).first()
+    save = Save.query.filter_by(user_id = user_id, spot_id = spot_id).first()
     if save is None:
         return failure_response("Save not found!")
     db.session.delete(save)
