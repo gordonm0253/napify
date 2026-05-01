@@ -9,58 +9,14 @@ import SwiftUI
 
 struct ProfileView: View {
 
-    @State private var user = User(
-        name: "Mikiyas A.",
-        username: "@mikiyasasmamaw",
-        school: "Cornell '29",
-        avgRating: 4.0,
-        spotsVisited: 12,
-        totalNapMinutes: 520,
-        reviewCount: 7
-    )
+    @Bindable var authVM: AuthViewModel
+    let onLogout: () -> Void
 
-    @State private var savedSpots: [NapSpot] = [
-        NapSpot(
-            name: "Uris Hall 3rd Floor",
-            building: "Uris Library",
-            floor: "3rd",
-            description: "",
-            rating: 5.0,
-            tags: [],
-            napDuration: 0,
-            likes: 0,
-
-            timestamp: Date()
-        ),
-        NapSpot(
-            name: "Physical Sciences",
-            building: "PSB Atrium",
-            floor: "Ground",
-            description: "",
-            rating: 4.5,
-            tags: [],
-            napDuration: 0,
-            likes: 0,
-
-            timestamp: Date()
-        ),
-        NapSpot(
-            name: "Mann Library",
-            building: "Mann Library",
-            floor: "2nd",
-            description: "",
-            rating: 4.5,
-            tags: [],
-            napDuration: 0,
-            likes: 0,
-
-            timestamp: Date()
-        )
-    ]
+    @State private var showEditProfile: Bool = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 20){
                 HStack {
                     Text("My Profile")
                         .font(.largeTitle)
@@ -69,8 +25,8 @@ struct ProfileView: View {
 
                     Spacer()
 
-                    Button(action: {}) {
-                        Text("Edit")
+                    Button(action: onLogout){
+                        Text("Log Out")
                             .font(.subheadline)
                             .foregroundStyle(Color(UIColor.napify.darkGray))
                             .padding(.horizontal, 16)
@@ -83,114 +39,99 @@ struct ProfileView: View {
                 }
                 .padding(.horizontal, 24)
 
-                HStack(spacing: 16) {
-                    Image("ProfilePic")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 70, height: 70)
-                        .clipShape(Circle())
+                if let user = authVM.currentUser {
+                    // profile pic and name
+                    VStack(spacing: 16){
+                        Image("mikiPFP")
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 150, height: 150)
+                            .clipShape(Circle())
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(user.name)
-                            .font(.title3)
-                            .fontWeight(.semibold)
+                        Text(user.name ?? user.username)
+                            .font(.system(size: 34, weight: .semibold))
                             .foregroundStyle(Color(UIColor.napify.black))
 
-                        Text("\(user.username) · \(user.school)")
-                            .font(.caption)
-                            .foregroundStyle(Color(UIColor.napify.silver))
+                        if let bio = user.bio, !bio.isEmpty {
+                            Text(bio)
+                                .font(.system(size: 16).italic())
+                                .foregroundStyle(Color(UIColor.napify.black))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
 
-                        HStack(spacing: 2) {
-                            ForEach(0..<5) { i in
-                                Image(systemName: Double(i) < user.avgRating ? "star.fill" : "star")
-                                    .font(.caption2)
-                                    .foregroundStyle(Color(UIColor.napify.amber))
+                    // hometown and major
+                    VStack(alignment: .leading, spacing: 24){
+                        if let hometown = user.hometown, !hometown.isEmpty {
+                            HStack(spacing: 12){
+                                Image(systemName: "house.fill")
+                                    .frame(width: 24, height: 24)
+                                    .foregroundStyle(Color(UIColor.napify.black))
+                                Text(hometown)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(Color(UIColor.napify.black))
                             }
-                            Text("Avg rating given")
-                                .font(.caption2)
-                                .foregroundStyle(Color(UIColor.napify.silver))
+                        }
+
+                        if let major = user.major, !major.isEmpty {
+                            HStack(spacing: 12){
+                                Image(systemName: "book.fill")
+                                    .frame(width: 24, height: 24)
+                                    .foregroundStyle(Color(UIColor.napify.black))
+                                Text(major)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(Color(UIColor.napify.black))
+                            }
                         }
                     }
-                }
-                .padding(.horizontal, 24)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 16)
 
-                HStack(spacing: 0) {
-                    statItem(value: "\(user.spotsVisited)", label: "SPOTS VISITED")
-                    statItem(value: formatNapTime(user.totalNapMinutes), label: "TOTAL NAP TIME")
-                    statItem(value: "\(user.reviewCount)", label: "REVIEWS")
-                }
-                .padding(16)
-                .background(Color(UIColor.napify.white))
-                .cornerRadius(16)
-                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Saved Spots")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Color(UIColor.napify.black))
-
-                        Spacer()
-
-                        Button(action: {}) {
-                            Text("See all")
-                                .font(.caption)
-                                .foregroundStyle(Color(UIColor.napify.amber))
-                        }
+                    // stats
+                    HStack(spacing: 0){
+                        statItem(value: "\(user.totalSpots ?? 0)", label: "SPOTS VISITED")
+                        statItem(value: formatNapTime(user.totalNaptime ?? 0), label: "TOTAL NAP TIME")
+                        statItem(value: "\(user.totalReviews ?? 0)", label: "REVIEWS")
                     }
-                    .padding(.horizontal, 24)
-
-                    VStack(spacing: 8) {
-                        ForEach(savedSpots) { spot in
-                            savedSpotRow(spot: spot)
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Recent Activity")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Color(UIColor.napify.black))
-                        .padding(.horizontal, 24)
-
-                    VStack(spacing: 0) {
-                        activityRow(
-                            action: "Reviewed",
-                            spotName: "Uris Hall 3F",
-                            detail: "2 days ago · 5\u{2605}",
-                            color: Color(UIColor.napify.amber)
-                        )
-
-                        Divider()
-                            .padding(.horizontal, 16)
-
-                        activityRow(
-                            action: "Saved",
-                            spotName: "Mann Library",
-                            detail: "5 days ago",
-                            color: Color(UIColor.napify.silver)
-                        )
-                    }
-                    .padding(.vertical, 8)
+                    .padding(16)
                     .background(Color(UIColor.napify.white))
                     .cornerRadius(16)
                     .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                     .padding(.horizontal, 24)
+                    .padding(.top, 8)
                 }
             }
         }
         .background(Color(UIColor.napify.offWhite))
         .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 80)
+            VStack {
+                Button(action: { showEditProfile = true }){
+                    Text("Edit Profile")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color(UIColor.napify.white))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color(UIColor.napify.amber))
+                        .cornerRadius(16)
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 80)
+            }
+            .background(Color(UIColor.napify.offWhite))
+        }
+        .task {
+            await authVM.refreshUser()
+        }
+        .sheet(isPresented: $showEditProfile){
+            EditProfileView(authVM: authVM)
         }
     }
 
     func statItem(value: String, label: String) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 4){
             Text(value)
                 .font(.title2)
                 .fontWeight(.bold)
@@ -203,76 +144,6 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity)
     }
 
-    func savedSpotRow(spot: NapSpot) -> some View {
-        HStack {
-            Circle()
-                .fill(Color(UIColor.napify.lightGray))
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Image(systemName: "moon.fill")
-                        .font(.caption)
-                        .foregroundStyle(Color(UIColor.napify.amber))
-                )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(spot.name)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Color(UIColor.napify.black))
-
-                HStack(spacing: 4) {
-                    Image(systemName: "mappin")
-                        .font(.caption2)
-                        .foregroundStyle(Color(UIColor.napify.amber))
-                    Text(spot.building)
-                        .font(.caption)
-                        .foregroundStyle(Color(UIColor.napify.silver))
-                }
-            }
-
-            Spacer()
-
-            HStack(spacing: 2) {
-                ForEach(0..<5) { i in
-                    Image(systemName: Double(i) < spot.rating ? "star.fill" : "star")
-                        .font(.caption2)
-                        .foregroundStyle(Color(UIColor.napify.amber))
-                }
-            }
-        }
-        .padding(12)
-        .background(Color(UIColor.napify.white))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-    }
-
-    func activityRow(action: String, spotName: String, detail: String, color: Color) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(action)
-                        .font(.subheadline)
-                        .foregroundStyle(Color(UIColor.napify.darkGray))
-                    Text(spotName)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Color(UIColor.napify.amber))
-                }
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(Color(UIColor.napify.silver))
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-    }
-
     func formatNapTime(_ minutes: Int) -> String {
         let hours = minutes / 60
         let mins = minutes % 60
@@ -281,5 +152,12 @@ struct ProfileView: View {
 }
 
 #Preview {
-    ProfileView()
+    ProfileView(
+        authVM: {
+            let vm = AuthViewModel()
+            vm.currentUser = User(id: 1, username: "mikiyas", name: "Miki Asmamaw", bio: "Born for CS yet suffering in ChemE", major: "Chemical Engineering", hometown: "Minot, ND", profilePicture: nil, totalNaptime: 520, totalSpots: 12, totalReviews: 7)
+            return vm
+        }(),
+        onLogout: {}
+    )
 }
