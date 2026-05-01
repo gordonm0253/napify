@@ -110,8 +110,8 @@ def get_spot(spot_id):
 # get all reviews
 @app.route("/reviews/")
 def get_all_reviews():
-    posts = Spot.query.all()
-    return success_response({"posts": [p.to_dict() for p in posts]})
+    reviews = Review.query.all()
+    return success_response({"reviews": [r.serialize() for r in reviews]})
 
 # create a review
 @app.route("/reviews/", methods=["POST"])
