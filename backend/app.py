@@ -9,6 +9,8 @@ from utils import add_spot_data, add_user_data
 db_filename = "napify.db"
 app = Flask(__name__)
 
+MAX_IMAGE_BYTES = 10000000 # max image size - 10MB
+
 # setup config
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_filename}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -20,14 +22,24 @@ with app.app_context():
     db.create_all()
 
 def success_response(data, code=200):
+    '''
+    Serialize data as JSON and return it with the given HTTP status code.
+    '''
     return json.dumps(data), code
 
 def failure_response(message, code=404):
+    '''
+    Serialize an error message as JSON and return it with the given HTTP status code.
+    '''
     return json.dumps({"error": message}), code
 
 # users
 @app.route("/user/")
 def get_user_info():
+    '''
+    Return profile information for the currently authenticated user,
+    including aggregated stats (total nap time, spots visited, review count).
+    '''
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
@@ -37,6 +49,10 @@ def get_user_info():
 # login/register
 @app.route("/register/", methods=["POST"])
 def register_user():
+    '''
+    Create a new user account using HTTP Basic Auth credentials. Registration fails if the
+    username is already taken.
+    '''
     auth_header = request.headers.get("Authorization")
 
     if not auth_header or not auth_header.startswith("Basic "):
@@ -60,9 +76,8 @@ def register_user():
 
 def require_basic_auth():
     """
-    Helper function for requiing basic authentication
+    Validate HTTP Basic Auth credentials from the incoming request.
     """
-
     auth_header = request.headers.get("Authorization")
 
     if not auth_header or not auth_header.startswith("Basic "):
@@ -85,6 +100,9 @@ def require_basic_auth():
 
 @app.route("/auth/login/")
 def sign_in():
+    '''
+    Verify credentials and return the authenticated user's serialized data.
+    '''
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
@@ -93,11 +111,18 @@ def sign_in():
 # Routes for spots
 @app.route("/spots/")
 def get_all_spots():
+    '''
+    Return a list of all nap spots with their associated reviews and
+    computed average rating. No Auth required.
+    '''
     spots = [add_spot_data(s.serialize()) for s in Spot.query.all()]
     return success_response({"spots": spots})
 
 @app.route("/spots/<int:spot_id>/")
 def get_spot(spot_id):
+    '''
+    Return a single nap spot by its ID, with reviews and average rating. No Auth required.
+    '''
     spot = Spot.query.filter_by(id=spot_id).first()
     if spot is None:
         return failure_response("Spot not found!")
@@ -110,12 +135,19 @@ def get_spot(spot_id):
 # get all reviews
 @app.route("/reviews/")
 def get_all_reviews():
+    '''
+    Return all reviews across every nap spot.
+    '''
     reviews = Review.query.all()
     return success_response({"reviews": [r.serialize() for r in reviews]})
 
 # create a review
 @app.route("/reviews/", methods=["POST"])
 def create_review():
+    '''
+    Create a new review for a nap spot, creating the spot itself if it
+    does not already exist.
+    '''
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
@@ -127,12 +159,20 @@ def create_review():
     rating = body.get("rating")
     nap_duration = body.get("nap_duration")
     location_hint = body.get("location_hint")
+    image_data = body.get("image_data")
     notes = body.get("notes")
     tag_names = body.get("tags", [])
 
-    if any(v is None for v in [spot_name, latitude, longitude, rating, nap_duration]):
+    if any(v is None for v in [spot_name, latitude, longitude, rating, nap_duration, image_data]):
         return failure_response("Missing required fields.", 400)
     
+    try: # ensure that the image data is good
+        decoded = base64.b64decode(image_data, validate=True)
+    except Exception:
+        return failure_response("Invalid base64 image data", 400)
+    if len(decoded) > MAX_IMAGE_BYTES:
+        return failure_response("Image too large (max 10MB)", 400)
+
     spot = Spot.query.filter_by(name=spot_name).first()
     if spot is None:
         spot = Spot(name=spot_name, latitude=latitude, longitude=longitude)
@@ -155,7 +195,8 @@ def create_review():
         location_hint=location_hint,
         notes=notes,
         creation_time=dt.today(),
-        tags=tags
+        tags=tags,
+        image_data=image_data
     )
     db.session.add(new_review)
     db.session.commit()
@@ -164,6 +205,9 @@ def create_review():
 # get a specific post
 @app.route("/reviews/<int:review_id>/")
 def get_review(review_id):
+    '''
+    Return a single review by its ID.
+    '''
     review = Review.query.filter_by(id=review_id).first()
     if review is None:
         return failure_response("Post not found!")
@@ -174,6 +218,9 @@ def get_review(review_id):
 # save a post
 @app.route("/spots/<int:spot_id>/save/", methods=["POST"])
 def save_spot(spot_id):
+    '''
+    Save (bookmark) a nap spot for the authenticated user.
+    '''
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)
@@ -194,6 +241,9 @@ def save_spot(spot_id):
 #unsave a post
 @app.route("/spots/<int:spot_id>/save/", methods=["DELETE"])
 def unsave_spot(spot_id):
+    '''
+    Remove a previously saved nap spot for the authenticated user.
+    '''
     user = require_basic_auth()
     if user is None:
         return failure_response("Invalid credentials", 401)

@@ -1,3 +1,17 @@
+"""
+db.py
+
+SQLAlchemy database models for Napify.
+
+Models
+------
+User     - registered app user; owns Reviews and Saves
+Spot     - a physical nap location; aggregates Reviews and Saves
+Review   - a user's rating/notes for a Spot, with optional tags and an image
+Save     - a user's bookmark of a Spot (many-to-many join)
+Tag      - a label that can be attached to many Reviews (many-to-many via review_tags)
+"""
+
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -59,12 +73,13 @@ class Review(db.Model):
     # spot information
     spot_id = db.Column(db.Integer, db.ForeignKey("spots.id"), nullable=False)
     location_hint = db.Column(db.String, nullable=True) # where in the building the user is
-    
+    image_data = db.Column(db.Text, nullable=False)
+
     # nap-specific information
     rating = db.Column(db.Float, nullable=False)
     nap_duration = db.Column(db.Integer, nullable=False)  # nap duration in minutes
     notes = db.Column(db.String, nullable=True) # any review notes on the spot!
-    
+
     tags = db.relationship("Tag", secondary=review_tags)
 
     def serialize(self):
@@ -74,6 +89,7 @@ class Review(db.Model):
             "spot_id": self.spot_id,
             "location_hint": self.location_hint,
             "creation_time": str(self.creation_time),
+            "image_data": self.image_data,
             "rating": self.rating,
             "nap_duration": self.nap_duration,
             "notes": self.notes,

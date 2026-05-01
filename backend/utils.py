@@ -2,7 +2,7 @@ from db import Spot, Review
 
 def add_spot_data(spot_data):
     '''
-    Given spot data, append 
+    Compute and append aggregate statistics to a serialized spot dict.
     '''
     ratings = [r["rating"] for r in spot_data["reviews"]]
     average_rating = sum(ratings) / len(ratings)
@@ -11,7 +11,7 @@ def add_spot_data(spot_data):
 
 def add_user_data(user_data):
     '''
-    
+    Compute and append aggregate statistics to a serialized user dict.
     '''
     total_naptime = 0
     spots = set([])
