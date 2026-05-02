@@ -59,7 +59,7 @@ def update_user_info():
         return failure_response("Invalid credentials", 401)
     
     body = json.loads(request.data)
-    
+
     # update only fields that were provided
     if "name" in body:
         user.name = body["name"]
@@ -73,7 +73,7 @@ def update_user_info():
         user.profile_picture = body["profile_picture"]
 
     db.session.commit()
-    return success_response(user.serialize())
+    return success_response(user.serialize(), 201)
 
 # login/register
 @app.route("/register/", methods=["POST"])
@@ -238,7 +238,7 @@ def get_review(review_id):
     '''
     review = Review.query.filter_by(id=review_id).first()
     if review is None:
-        return failure_response("Post not found!")
+        return failure_response("Review not found!")
     return success_response(review.serialize())
 
 # save/unsave posts--------------------
