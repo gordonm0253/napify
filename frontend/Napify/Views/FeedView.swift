@@ -58,7 +58,7 @@ struct FeedView: View {
                 }
 
                 LazyVStack {
-                    ForEach(feedVM.reviews) { review in
+                    ForEach(feedVM.filteredReviews) { review in
                         SpotCardView(
                             review: review,
                             spotName: feedVM.spotName(for: review)
@@ -68,7 +68,7 @@ struct FeedView: View {
             }
         }
         .background(Color(UIColor.napify.offWhite))
-        .safeAreaInset(edge: .bottom) {
+        .safeAreaInset(edge: .bottom) { // found online
             Color.clear.frame(height: 80)
         }
         .task {

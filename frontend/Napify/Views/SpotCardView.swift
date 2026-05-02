@@ -12,22 +12,26 @@ struct SpotCardView: View {
     let review: Review
     let spotName: String
 
+    @State private var loadedImage: UIImage? = nil
+    @State private var imageLoaded: Bool = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12){
             // show image if there is one
-            if let imageData = review.imageData,
-               let data = Data(base64Encoded: imageData),
-               let uiImage = UIImage(data: data) {
+            if let uiImage = loadedImage {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
                     .frame(height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
-            } else {
-                Rectangle()
+            } else if !imageLoaded {
+                RoundedRectangle(cornerRadius: 16)
                     .fill(Color(UIColor.napify.lightGray))
                     .frame(height: 180)
-                    .cornerRadius(16)
+                    .overlay(
+                        ProgressView()
+                            .tint(Color(UIColor.napify.amber))
+                    )
             }
 
             HStack(alignment: .top){
@@ -90,6 +94,23 @@ struct SpotCardView: View {
         .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
+        .task {
+            // lazy load image from single review endpoint (found online)
+            if let imageData = review.imageData,
+               let data = Data(base64Encoded: imageData) {
+                loadedImage = UIImage(data: data)
+                imageLoaded = true
+                return
+            }
+            do {
+                let fullReview = try await NetworkManager.shared.fetchReview(reviewId: review.id)
+                if let imageData = fullReview.imageData,
+                   let data = Data(base64Encoded: imageData) {
+                    loadedImage = UIImage(data: data)
+                }
+            } catch {}
+            imageLoaded = true
+        }
     }
 }
 

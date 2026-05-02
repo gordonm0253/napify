@@ -15,6 +15,16 @@ class FeedViewModel {
     var selectedFilter: String = "New"
     let filters = ["Top Rated", "New"]
 
+    // sorted reviews based on selected filter
+    var filteredReviews: [Review] {
+        switch selectedFilter {
+        case "Top Rated":
+            return reviews.sorted { $0.rating > $1.rating }
+        default:
+            return reviews.sorted { $0.id > $1.id }
+        }
+    }
+
     func fetchFeed() async {
         do {
             spots = try await NetworkManager.shared.fetchSpots()

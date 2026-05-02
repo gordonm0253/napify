@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import PhotosUI
+import PhotosUI // found online
 
 struct CreatePostView: View {
 
@@ -64,6 +64,7 @@ struct CreatePostView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
 
+                    // photo picker (found online)
                     PhotosPicker(selection: $selectedPhoto, matching: .images){
                         HStack {
                             Image(systemName: "photo.on.rectangle")
